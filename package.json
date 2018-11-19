@@ -1,0 +1,26 @@
+{
+  "name": "homebridge-adt-smart-security",
+  "description": "homebridge-plugin for ADT Smart Security service",
+  "version": "0.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "esteban-mallen"
+  },
+  "main": "",
+  "keywords": [
+    "homebridge-plugin",
+    "ADT",
+    "Smart Security"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/esteban-mallen/homebridge-adt-smart-security"
+  },
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.2.0"
+  },
+  "dependencies": {
+    "node-cache": "^4.2.0"
+  }
+}
