@@ -85,20 +85,20 @@ smartSecurityAccessory.prototype = {
     setTargetState(status, callback) {
         this.log("Target state set to %s", status);
 
-        this.getStateFromDevice()
+        this.getState()
             .then((currentState) => {
-                if (currentState !== 3 && currentState.alarm.faultStatus) {
+                if (currentState && currentState !== 3 && currentState.alarm.faultStatus === 1) {
                     this.log.error("Can't arm system. System is not ready.");
                     callback(1);
                 } else {
                     this.adt.changeState(status)
-                        .then((newState) => {
+                        .then(() => {
                             callback(null);
-                            this.updateCharacteristics(newState);
-                        })
+                        });
                 }
             })
             .catch((error) => {
+                this.log.error(error);
                 callback(error);
             });
     },
@@ -130,14 +130,35 @@ smartSecurityAccessory.prototype = {
                 .then((state) => {
                     this.statusCache.set(STATUS, state);
                     this.updateCharacteristics(state);
+                })
+                .catch((error) => {
+                    this.log.error("Failed refreshing status");
+                    this.setupAutoRefresh();
                 });
         });
 
         that.getStateFromDevice()
             .then((state) => {
                 this.statusCache.set(STATUS, state);
-                this.updateCharacteristics(state);
+                this.setCharacteristics(state);
             });
+    },
+
+    setCharacteristics(status) {
+        this.log.debug("Loaded status", JSON.stringify(status));
+
+        this.securityService
+            .getCharacteristic(Characteristic.SecuritySystemCurrentState)
+            .setValue(status.alarm.armingState);
+        this.securityService
+            .getCharacteristic(Characteristic.StatusFault)
+            .setValue(status.alarm.faultStatus);
+        this.batteryService
+            .getCharacteristic(Characteristic.BatteryLevel)
+            .setValue(status.alarm.batteryLevel);
+        this.batteryService
+            .getCharacteristic(Characteristic.StatusLowBattery)
+            .setValue(status.alarm.lowBatterStatus);
     },
 
     updateCharacteristics(status) {
@@ -146,9 +167,6 @@ smartSecurityAccessory.prototype = {
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemCurrentState)
             .updateValue(status.alarm.armingState);
-        this.securityService
-            .getCharacteristic(Characteristic.SecuritySystemTargetState)
-            .updateValue(status.alarm.targetState);
         this.securityService
             .getCharacteristic(Characteristic.StatusFault)
             .updateValue(status.alarm.faultStatus);
