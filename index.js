@@ -1,23 +1,37 @@
 let Service, Characteristic;
+let nodeCache = require('node-cache');
+let adt = require('./lib/adt').Adt;
 
-const nodeCache = require("node-cache");
-const DEFAULT_SERVICE_URL = 'https://smartsecurity.adt.com.ar';
-const REFRESHING = 'refreshing';
+const STATUS = 'status';
 
 const smartSecurityAccessory = function (log, config) {
     this.log = log;
     this.name = config.name;
     this.username = config.username;
     this.password = config.password;
-    this.pollingInterval = config.pollingInterval || 30;
+    this.cacheTTL = config.cacheTTL || 5;
 
-    this.log.debug("Initialized with username=%s, password=%s, pollingInterval=%s", this.username, this.password, this.pollingInterval);
+    this.log.debug("Initialized with username=%s, password=%s, cacheTTL=%s", this.username, this.password, this.cacheTTL);
 
     this.accessoryInfo = new Service.AccessoryInformation();
     this.securityService = new Service.SecuritySystem(this.name);
     this.batteryService = new Service.BatteryService(this.name);
 
-    this.state = this.getStateFromDevice();
+    this.adt = new adt(this.username, this.password, this.log);
+
+    this.statusCache = new nodeCache({
+        stdTTL: this.cacheTTL,
+        checkperiod: 1,
+        useClones: false
+    });
+
+    this.adt.login()
+        .then(() => {
+            this.setupAutoRefresh();
+        })
+        .catch((error) => {
+            this.log.error("Error on login", error);
+        });
 };
 
 smartSecurityAccessory.prototype = {
@@ -26,8 +40,6 @@ smartSecurityAccessory.prototype = {
         this.accessoryInfo.setCharacteristic(Characteristic.SerialNumber, "See ADT Smart Security app");
         this.accessoryInfo.setCharacteristic(Characteristic.Identify, false);
         this.accessoryInfo.setCharacteristic(Characteristic.Name, this.name);
-        this.accessoryInfo.setCharacteristic(Characteristic.Model, "model");
-        this.accessoryInfo.setCharacteristic(Characteristic.FirmwareRevision, "fw");
 
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemCurrentState)
@@ -37,12 +49,12 @@ smartSecurityAccessory.prototype = {
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemTargetState)
             .on("set", this.setTargetState.bind(this))
-            .on("get", this.getTargetState.bind(this))
             .setProps({validValues: [0, 1, 3]});
 
         this.batteryService
             .getCharacteristic(Characteristic.BatteryLevel)
             .on("get", this.getBatteryLevel.bind(this));
+
         this.batteryService
             .getCharacteristic(Characteristic.StatusLowBattery)
             .on("get", this.getLowBatteryStatus.bind(this));
@@ -70,55 +82,82 @@ smartSecurityAccessory.prototype = {
         callback(null, this.getState().armingState);
     },
 
-    getTargetState(callback) {
-        this.log("Target state requested");
-        callback(null, this.getState().targetState);
-    },
-
     setTargetState(status, callback) {
         this.log("Target state set to %s", status);
 
-        this.state.targetState = status;
+        this.getStateFromDevice()
+            .then((status) => {
+                if (status !== 3 && status.alarm.faultStatus) {
+                    this.log.error("Can't arm system. System is not ready.");
+                    callback(1);
+                } else {
+                    this.adt.changeState(status)
+                        .then((newState) => {
+                            callback(null);
+                            this.updateCharacteristics(newState);
+                        })
+                }
+            })
+            .catch((error) => {
+                callback(error);
+            });
+    },
 
-        callback();
+    async getState() {
+        let status = this.statusCache.get(STATUS);
 
-        this.state.armingState = status;
+        if (!status) {
+            await setTimeout(() => this.log.debug("Waiting for status"), 1000);
+            status = this.statusCache.get(STATUS);
+        }
 
-        this.updateCharacteristics(this.state);
+        return status;
+    },
+
+    async getStateFromDevice() {
+        this.log.debug("Getting state from device");
+        return await this.adt.getCurrentStatus();
+    },
+
+    setupAutoRefresh() {
+        this.log("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
+
+        let that = this;
+        this.statusCache.on('expired', (key, value) => {
+            that.log.debug(key + " expired");
+
+            that.getStateFromDevice()
+                .then((state) => {
+                    this.statusCache.set(STATUS, state);
+                    this.updateCharacteristics(state);
+                });
+        });
+
+        that.getStateFromDevice()
+            .then((state) => {
+                this.statusCache.set(STATUS, state);
+                this.updateCharacteristics(state);
+            });
     },
 
     updateCharacteristics(status) {
+        this.log.debug("Updating characteristics to", JSON.stringify(status));
+
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemCurrentState)
-            .updateValue(status.armingState);
+            .updateValue(status.alarm.armingState);
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemTargetState)
-            .updateValue(status.targetState);
+            .updateValue(status.alarm.targetState);
+        this.securityService
+            .getCharacteristic(Characteristic.StatusFault)
+            .updateValue(status.alarm.faultStatus);
         this.batteryService
             .getCharacteristic(Characteristic.BatteryLevel)
-            .updateValue(status.batteryLevel);
+            .updateValue(status.alarm.batteryLevel);
         this.batteryService
             .getCharacteristic(Characteristic.StatusLowBattery)
-            .updateValue(status.lowBatterStatus);
-    },
-
-    getState() {
-        return this.getStateFromDevice(false);
-    },
-
-    getStateFromDevice(silent) {
-        if (!silent) {
-            this.log("Getting state from device");
-        }
-
-        let state = {
-            armingState: Characteristic.SecuritySystemCurrentState.DISARMED,
-            targetState: Characteristic.SecuritySystemCurrentState.DISARMED,
-            lowBatterStatus: Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
-            batteryLevel: 100
-        };
-
-        return state;
+            .updateValue(status.alarm.lowBatterStatus);
     }
 };
 
