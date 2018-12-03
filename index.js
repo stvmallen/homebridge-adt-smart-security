@@ -86,8 +86,8 @@ smartSecurityAccessory.prototype = {
         this.log("Target state set to %s", status);
 
         this.getStateFromDevice()
-            .then((status) => {
-                if (status !== 3 && status.alarm.faultStatus) {
+            .then((currentState) => {
+                if (currentState !== 3 && currentState.alarm.faultStatus) {
                     this.log.error("Can't arm system. System is not ready.");
                     callback(1);
                 } else {
