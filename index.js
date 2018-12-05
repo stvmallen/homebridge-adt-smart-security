@@ -107,6 +107,11 @@ smartSecurityAccessory.prototype = {
                         .then(() => {
                             this.log("Status set to", status);
                             callback(null);
+
+                            setTimeout(() => {
+                                this.adt.targetState = undefined;
+                                this.log.debug("Target state reset");
+                            }, 20000);
                         });
                 }
             })
@@ -155,7 +160,7 @@ smartSecurityAccessory.prototype = {
             .then((state) => {
                 this.statusCache.set(STATUS, state);
                 this.updateCharacteristics(state);
-                this.log.debug("Status initialized");
+                this.log.debug("Status initialized with", JSON.stringify(state));
             });
     },
 
