@@ -46,7 +46,7 @@ smartSecurityAccessory.prototype = {
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemCurrentState)
             .on("get", this.getCurrentState.bind(this))
-            .setProps({validValues: [0, 1, 3]});
+            .setProps({validValues: [0, 1, 3, 4]});
 
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemTargetState)
@@ -90,52 +90,56 @@ smartSecurityAccessory.prototype = {
         callback(null, this.getState().targetState);
     },
 
+
+    getStateFromDevice() {
+        this.log.debug("Getting state from device");
+        return this.adt.getCurrentStatus();
+    },
+
+    async getState() {
+        let cachedStatus = this.statusCache.get(STATUS);
+
+        if (!cachedStatus) {
+            let that = this;
+            await setTimeout(() => that.log.debug("Waiting for status"), 1000);
+            cachedStatus = this.statusCache.get(STATUS);
+        }
+
+        this.log.debug("Found status", JSON.stringify(cachedStatus));
+
+        return cachedStatus;
+    },
+
     setTargetState(status, callback) {
         this.log("Received target status", status);
 
         this.adt.targetState = status;
 
-        this.getState()
-            .then((currentState) => {
-                if (currentState && currentState.alarm.armingState !== 3 && currentState.alarm.faultStatus === 1) {
-                    this.log.error("Can't arm system. System is not ready.");
-                    callback(1);
-                } else {
-                    this.log("Setting status to", status);
+        let currentStatus = this.statusCache.get(STATUS);
 
-                    this.adt.changeState(status)
-                        .then(() => {
-                            this.log("Status set to", status);
-                            callback(null);
+        if (currentStatus && currentStatus.alarm.armingState === 3 && currentStatus.alarm.faultStatus === 1) {
+            this.log.error("Can't arm system. System is not ready.");
+            this.adt.targetState = undefined;
+            callback(1);
+        } else {
+            this.log("Setting status to", status);
 
-                            setTimeout(() => {
-                                this.adt.targetState = undefined;
-                                this.log.debug("Target state reset");
-                            }, 20000);
-                        });
-                }
-            })
-            .catch((error) => {
-                this.log.error("Error while setting state to ", status, error);
-                this.adt.targetState = undefined;
-                callback(error);
-            });
-    },
+            this.adt.changeState(status)
+                .then(() => {
+                    this.log("Status set to", status);
+                    callback(null);
 
-    async getState() {
-        let status = this.statusCache.get(STATUS);
-
-        if (!status) {
-            await setTimeout(() => this.log.warn("Waiting for status"), 1000);
-            status = this.statusCache.get(STATUS);
+                    setTimeout(() => {
+                        this.adt.targetState = undefined;
+                        this.log.debug("Target state reset");
+                    }, 20000);
+                })
+                .catch((error) => {
+                    this.log.error("Error while setting state to ", status, error);
+                    this.adt.targetState = undefined;
+                    callback(error);
+                });
         }
-
-        return status;
-    },
-
-    async getStateFromDevice() {
-        this.log.debug("Getting state from device");
-        return await this.adt.getCurrentStatus();
     },
 
     setupAutoRefresh() {
@@ -151,16 +155,26 @@ smartSecurityAccessory.prototype = {
                     this.updateCharacteristics(state);
                 })
                 .catch((error) => {
-                    this.log.error("Failed refreshing status");
-                    this.setupAutoRefresh();
+                    this.log.error("Failed refreshing status:", error);
+                    this.initStatus();
                 });
         });
+
+        this.initStatus();
+    },
+
+    initStatus() {
+        this.log.debug("Initializing status");
 
         this.getStateFromDevice()
             .then((state) => {
                 this.statusCache.set(STATUS, state);
                 this.updateCharacteristics(state);
                 this.log.debug("Status initialized with", JSON.stringify(state));
+            })
+            .catch((error) => {
+                this.log.error("Failed getting status:", error);
+                this.initStatus();
             });
     },
 
