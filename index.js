@@ -31,13 +31,7 @@ const smartSecurityAccessory = function (log, config) {
         useClones: false
     });
 
-    this.adt.login()
-        .then(() => {
-            this.setupAutoRefresh();
-        })
-        .catch((error) => {
-            this.log.error("Error on login", error);
-        });
+    this.init();
 };
 
 smartSecurityAccessory.prototype = {
@@ -135,7 +129,7 @@ smartSecurityAccessory.prototype = {
         }
     },
 
-    async setupAutoRefresh() {
+    setupAutoRefresh() {
         this.log("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
 
         let that = this;
@@ -149,26 +143,28 @@ smartSecurityAccessory.prototype = {
                 })
                 .catch((error) => {
                     this.log.error("Failed refreshing status:", error);
-                    this.initStatus();
+                    this.init();
                 });
         });
-
-        this.initStatus();
     },
 
-    initStatus() {
-        this.log.debug("Initializing status");
+    async init() {
+        try {
+            await this.adt.login();
 
-        this.getStateFromDevice()
-            .then((state) => {
-                this.statusCache.set(STATUS, state);
-                this.updateCharacteristics(state);
-                this.log.debug("Status initialized with", JSON.stringify(state));
-            })
-            .catch((error) => {
-                this.log.error("Failed getting status:", error);
-                this.initStatus();
-            });
+            this.log.debug("Initializing status");
+
+            this.getStateFromDevice()
+                .then((state) => {
+                    this.updateCharacteristics(state);
+                    this.statusCache.set(STATUS, state);
+                    this.log.debug("Status initialized with", JSON.stringify(state));
+                });
+
+            this.setupAutoRefresh();
+        } catch (error) {
+            this.log.error("Initialization failed", error);
+        }
     },
 
     updateCharacteristics(status) {
