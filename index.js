@@ -9,15 +9,20 @@ const smartSecurityAccessory = function (log, config) {
     this.name = config.name;
     this.username = config.username;
     this.password = config.password;
+    this.domain = config.domain;
     this.cacheTTL = config.cacheTTL || 5;
 
-    this.log.debug("Initialized with username=%s, password=%s, cacheTTL=%s", this.username, this.password, this.cacheTTL);
+    if (!this.username || !this.password || !this.domain) {
+        throw new Error("Missing parameter. Please check configuration.");
+    }
+
+    this.log.debug("Initialized with username=%s, password=%s, cacheTTL=%s, domain=%s", this.username, this.password, this.cacheTTL, this.domain);
 
     this.accessoryInfo = new Service.AccessoryInformation();
     this.securityService = new Service.SecuritySystem(this.name);
     this.batteryService = new Service.BatteryService(this.name);
 
-    this.adt = new adt(this.username, this.password, this.log);
+    this.adt = new adt(this.username, this.password, this.domain, this.log);
 
     this.statusCache = new nodeCache({
         stdTTL: this.cacheTTL,
@@ -120,29 +125,17 @@ smartSecurityAccessory.prototype = {
         if (currentStatus && currentStatus.alarm.armingState === 3 && currentStatus.alarm.faultStatus === 1) {
             this.log.error("Can't arm system. System is not ready.");
             this.adt.targetState = undefined;
+
             callback(1);
         } else {
             this.log("Setting status to", status);
+            this.adt.changeState(status);
 
-            this.adt.changeState(status)
-                .then(() => {
-                    this.log("Status set to", status);
-                    callback(null);
-
-                    setTimeout(() => {
-                        this.adt.targetState = undefined;
-                        this.log.debug("Target state reset");
-                    }, 20000);
-                })
-                .catch((error) => {
-                    this.log.error("Error while setting state to ", status, error);
-                    this.adt.targetState = undefined;
-                    callback(error);
-                });
+            callback(null);
         }
     },
 
-    setupAutoRefresh() {
+    async setupAutoRefresh() {
         this.log("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
 
         let that = this;
