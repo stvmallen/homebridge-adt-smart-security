@@ -1,5 +1,6 @@
 let Service, Characteristic;
 let nodeCache = require('node-cache');
+let pEvent = require('p-event');
 let adt = require('./lib/adt').Adt;
 
 const STATUS = 'status';
@@ -105,9 +106,8 @@ smartSecurityAccessory.prototype = {
         let cachedStatus = this.statusCache.get(STATUS);
 
         if (!cachedStatus) {
-            let that = this;
-            await setTimeout(() => that.log.debug("Waiting for status"), 1000);
-            cachedStatus = this.statusCache.get(STATUS);
+            this.log.debug("Waiting for status");
+            cachedStatus = await pEvent(this.statusCache, 'set');
         }
 
         this.log.debug("Found status", JSON.stringify(cachedStatus));
