@@ -1,0 +1,19 @@
+{
+  "bridge": {
+    "name": "Homebridge",
+    "username": "CD:22:3D:E3:CE:30",
+    "port": 51826,
+    "pin": "031-45-156"
+  },
+  "description": "Homebridge plugin for Nubicam",
+  "accessories": [
+    {
+      "accessory": "ADT",
+      "name": "ADT",
+      "username": "user",
+      "password": "pass",
+      "cacheTTL": 3, //OPTIONAL
+      "domain": "smartsecurity.adt.com.ar"
+    }
+  ]
+}
