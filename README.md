@@ -7,7 +7,7 @@ homebridge-plugin for ADT Smart Security (https://smartsecurity.adt.com.ar/)
 ### Features:
 
 - Get and set security system status (Home, Away, Off)
-- View battery level
+- View battery level (with low battery warning)
 
 ## Installation:
 
