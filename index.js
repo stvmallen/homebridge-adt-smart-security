@@ -77,7 +77,7 @@ smartSecurityAccessory.prototype = {
 
     getLowBatteryStatus(callback) {
         this.log("Battery status requested");
-        callback(null, this.getState().lowBatterStatus);
+        callback(null, this.getState().lowBatteryStatus);
     },
 
     getCurrentState(callback) {
@@ -130,7 +130,7 @@ smartSecurityAccessory.prototype = {
     },
 
     setupAutoRefresh() {
-        this.log("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
+        this.log.debug("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
 
         let that = this;
         this.statusCache.on('expired', (key, value) => {
@@ -142,26 +142,29 @@ smartSecurityAccessory.prototype = {
                     this.updateCharacteristics(state);
                 })
                 .catch((error) => {
-                    this.log.error("Failed refreshing status:", error);
-                    this.init();
+                    this.log.error("Failed refreshing status. Waiting for recovery.", error);
                 });
         });
+
+        this.adt.on('recovered', (state) => {
+            that.statusCache.set(STATUS, state);
+            that.updateCharacteristics(state);
+        })
     },
 
     async init() {
         try {
-            await this.adt.login();
-
-            this.log.debug("Initializing status");
-
-            this.getStateFromDevice()
-                .then((state) => {
-                    this.updateCharacteristics(state);
-                    this.statusCache.set(STATUS, state);
-                    this.log.debug("Status initialized with", JSON.stringify(state));
-                });
-
+            this.log("Initializing status");
             this.setupAutoRefresh();
+
+            await this.adt.login();
+            let state = await this.getStateFromDevice();
+
+            this.updateCharacteristics(state);
+            this.statusCache.set(STATUS, state);
+
+            this.log("Status initialized");
+            this.log.debug("Status initialized", JSON.stringify(state));
         } catch (error) {
             this.log.error("Initialization failed", error);
         }
@@ -184,7 +187,7 @@ smartSecurityAccessory.prototype = {
             .updateValue(status.alarm.batteryLevel);
         this.batteryService
             .getCharacteristic(Characteristic.StatusLowBattery)
-            .updateValue(status.alarm.lowBatterStatus);
+            .updateValue(status.alarm.lowBatteryStatus);
     }
 };
 
