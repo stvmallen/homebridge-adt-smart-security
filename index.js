@@ -1,37 +1,20 @@
 let Service, Characteristic;
-let nodeCache = require('node-cache');
 let pEvent = require('p-event');
 let adt = require('./lib/adt').Adt;
-
-const STATUS = 'status';
 
 const smartSecurityAccessory = function (log, config) {
     this.log = log;
     this.name = config.name;
-    this.username = config.username;
-    this.password = config.password;
-    this.domain = config.domain;
-    this.cacheTTL = config.cacheTTL || 5;
-
-    if (!this.username || !this.password || !this.domain) {
-        throw new Error("Missing parameter. Please check configuration.");
-    }
-
-    this.log.debug("Initialized with username=%s, password=%s, cacheTTL=%s, domain=%s", this.username, this.password, this.cacheTTL, this.domain);
 
     this.accessoryInfo = new Service.AccessoryInformation();
     this.securityService = new Service.SecuritySystem(this.name);
     this.batteryService = new Service.BatteryService(this.name);
 
-    this.adt = new adt(this.username, this.password, this.domain, this.log);
+    this.adt = new adt(config, this.log);
 
-    this.statusCache = new nodeCache({
-        stdTTL: this.cacheTTL,
-        checkperiod: 1,
-        useClones: false
-    });
-
-    this.init();
+    this.adt.on('state', (state) => {
+        this.updateCharacteristics(state);
+    })
 };
 
 smartSecurityAccessory.prototype = {
@@ -90,23 +73,8 @@ smartSecurityAccessory.prototype = {
         callback(null, this.getState().targetState);
     },
 
-
-    getStateFromDevice() {
-        this.log.debug("Getting state from device");
-        return this.adt.getCurrentStatus();
-    },
-
-    async getState() {
-        let cachedStatus = this.statusCache.get(STATUS);
-
-        if (!cachedStatus) {
-            this.log.debug("Waiting for status");
-            cachedStatus = await pEvent(this.statusCache, 'set');
-        }
-
-        this.log.debug("Found status", JSON.stringify(cachedStatus));
-
-        return cachedStatus;
+    getState() {
+        return this.adt.getState;
     },
 
     setTargetState(status, callback) {
@@ -126,47 +94,6 @@ smartSecurityAccessory.prototype = {
             this.adt.changeState(status);
 
             callback(null);
-        }
-    },
-
-    setupAutoRefresh() {
-        this.log.debug("Enabling autoRefresh every %s seconds", this.statusCache.options.stdTTL);
-
-        let that = this;
-        this.statusCache.on('expired', (key, value) => {
-            that.log.debug(key + " expired");
-
-            that.getStateFromDevice()
-                .then((state) => {
-                    this.statusCache.set(STATUS, state);
-                    this.updateCharacteristics(state);
-                })
-                .catch((error) => {
-                    this.log.error("Failed refreshing status. Waiting for recovery.", error);
-                });
-        });
-
-        this.adt.on('recovered', (state) => {
-            that.statusCache.set(STATUS, state);
-            that.updateCharacteristics(state);
-        })
-    },
-
-    async init() {
-        try {
-            this.log("Initializing status");
-            this.setupAutoRefresh();
-
-            await this.adt.login();
-            let state = await this.getStateFromDevice();
-
-            this.updateCharacteristics(state);
-            this.statusCache.set(STATUS, state);
-
-            this.log("Status initialized");
-            this.log.debug("Status initialized", JSON.stringify(state));
-        } catch (error) {
-            this.log.error("Initialization failed", error);
         }
     },
 
