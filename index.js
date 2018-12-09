@@ -1,5 +1,4 @@
 let Service, Characteristic;
-let pEvent = require('p-event');
 let adt = require('./lib/adt').Adt;
 
 const smartSecurityAccessory = function (log, config) {
@@ -55,46 +54,27 @@ smartSecurityAccessory.prototype = {
 
     getBatteryLevel(callback) {
         this.log("Battery level requested");
-        callback(null, this.getState().batteryLevel);
+        callback(null, this.adt.getState().batteryLevel);
     },
 
     getLowBatteryStatus(callback) {
         this.log("Battery status requested");
-        callback(null, this.getState().lowBatteryStatus);
+        callback(null, this.adt.getState().lowBatteryStatus);
     },
 
     getCurrentState(callback) {
         this.log("Current state requested");
-        callback(null, this.getState().armingState);
+        callback(null, this.adt.getState().armingState);
     },
 
     getTargetState(callback) {
         this.log("Target state requested");
-        callback(null, this.getState().targetState);
-    },
-
-    getState() {
-        return this.adt.getState;
+        callback(null, this.adt.getState().targetState);
     },
 
     setTargetState(status, callback) {
         this.log("Received target status", status);
-
-        this.adt.targetState = status;
-
-        let currentStatus = this.statusCache.get(STATUS);
-
-        if (currentStatus && currentStatus.alarm.armingState === 3 && currentStatus.alarm.faultStatus === 1) {
-            this.log.error("Can't arm system. System is not ready.");
-            this.adt.targetState = undefined;
-
-            callback(1);
-        } else {
-            this.log("Setting status to", status);
-            this.adt.changeState(status);
-
-            callback(null);
-        }
+        callback(this.adt.setState(status));
     },
 
     updateCharacteristics(status) {
