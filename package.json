@@ -1,7 +1,7 @@
 {
   "name": "homebridge-adt-smart-security",
   "description": "homebridge-plugin for ADT Smart Security service",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "author": {
     "name": "esteban-mallen"
@@ -23,6 +23,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
     "node-cache": "^4.2.0",
+    "p-event": "^2.1.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.2"
   }
