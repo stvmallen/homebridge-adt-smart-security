@@ -1,5 +1,5 @@
-# homebridge-nubicam
-homebridge-plugin for Nubicam (www.nubicam.com.ar)
+# homebridge-adt-smart-security
+homebridge-plugin for ADT Smart Security (https://smartsecurity.adt.com.ar/)
 
 [![npm version](https://badge.fury.io/js/homebridge-adt-smart-security.svg)](https://badge.fury.io/js/homebridge-adt-smart-security)
 [![dependencies Status](https://david-dm.org/esteban-mallen/homebridge-adt-smart-security/status.svg)](https://david-dm.org/esteban-mallen/homebridge-adt-smart-security)
@@ -11,7 +11,7 @@ homebridge-plugin for Nubicam (www.nubicam.com.ar)
 
 ## Installation:
 
-### 1. Install homebridge and Nubicam plugin.
+### 1. Install homebridge and ADT Smart Security plugin.
 - 1.1 `npm install -g homebridge`
 - 1.2 `npm install -g homebridge-adt-smart-security`
 
