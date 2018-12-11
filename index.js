@@ -55,7 +55,7 @@ smartSecurityAccessory.prototype = {
     getBatteryLevel(callback) {
         this.log("Battery level requested");
         this.adt.getState()
-            .then((state) => callback(null, state.alarm.batteryLevel))
+            .then((state) => callback(null, state ? state.alarm.batteryLevel : state))
             .catch((error) => {
                 this.log.error(error);
                 return callback(error);
@@ -65,7 +65,7 @@ smartSecurityAccessory.prototype = {
     getLowBatteryStatus(callback) {
         this.log("Battery status requested");
         this.adt.getState()
-            .then((state) => callback(null, state.alarm.lowBatteryStatus))
+            .then((state) => callback(null, state ? state.alarm.lowBatteryStatus : state))
             .catch((error) => {
                 this.log.error(error);
                 return callback(error);
@@ -75,7 +75,7 @@ smartSecurityAccessory.prototype = {
     getCurrentState(callback) {
         this.log("Current state requested");
         this.adt.getState()
-            .then((state) => callback(null, state.alarm.armingState))
+            .then((state) => callback(null, state ? state.alarm.armingState : state))
             .catch((error) => {
                 this.log.error(error);
                 return callback(error);
@@ -85,7 +85,7 @@ smartSecurityAccessory.prototype = {
     getTargetState(callback) {
         this.log("Target state requested");
         this.adt.getState()
-            .then((state) => callback(null, state.alarm.targetState))
+            .then((state) => callback(null, state ? state.alarm.targetState : state))
             .catch((error) => {
                 this.log.error(error);
                 return callback(error);
