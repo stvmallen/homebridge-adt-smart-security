@@ -58,7 +58,7 @@ smartSecurityAccessory.prototype = {
             .then((state) => callback(null, state ? state.alarm.batteryLevel : state))
             .catch((error) => {
                 this.log.error(error);
-                return callback(error);
+                callback(error);
             });
     },
 
@@ -68,7 +68,7 @@ smartSecurityAccessory.prototype = {
             .then((state) => callback(null, state ? state.alarm.lowBatteryStatus : state))
             .catch((error) => {
                 this.log.error(error);
-                return callback(error);
+                callback(error);
             });
     },
 
@@ -78,7 +78,7 @@ smartSecurityAccessory.prototype = {
             .then((state) => callback(null, state ? state.alarm.armingState : state))
             .catch((error) => {
                 this.log.error(error);
-                return callback(error);
+                callback(error);
             });
     },
 
@@ -88,7 +88,7 @@ smartSecurityAccessory.prototype = {
             .then((state) => callback(null, state ? state.alarm.targetState : state))
             .catch((error) => {
                 this.log.error(error);
-                return callback(error);
+                callback(error);
             });
     },
 
