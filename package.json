@@ -1,7 +1,7 @@
 {
   "name": "homebridge-adt-smart-security",
   "description": "homebridge-plugin for ADT Smart Security service",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "author": {
     "name": "esteban-mallen"
