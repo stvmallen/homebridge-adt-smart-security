@@ -26,5 +26,9 @@
     "p-event": "^2.1.0",
     "request": "^2.88.0",
     "request-promise": "^4.2.2"
+  },
+  "devDependencies": {
+    "homebridge": "^0.4.45",
+    "hap-nodejs": "^0.4.47"
   }
 }

@@ -5,14 +5,13 @@ const smartSecurityAccessory = function (log, config) {
     this.log = log;
     this.name = config.name;
 
-    this.accessoryInfo = new Service.AccessoryInformation();
-    this.securityService = new Service.SecuritySystem(this.name);
-    this.batteryService = new Service.BatteryService(this.name);
+    this.accessoryInfo = new Service.AccessoryInformation()
+        .setCharacteristic(Characteristic.Manufacturer, "ADT")
+        .setCharacteristic(Characteristic.SerialNumber, "See ADT Smart Security app")
+        .setCharacteristic(Characteristic.Identify, false)
+        .setCharacteristic(Characteristic.Name, this.name);
 
-    this.accessoryInfo.setCharacteristic(Characteristic.Manufacturer, "ADT");
-    this.accessoryInfo.setCharacteristic(Characteristic.SerialNumber, "See ADT Smart Security app");
-    this.accessoryInfo.setCharacteristic(Characteristic.Identify, false);
-    this.accessoryInfo.setCharacteristic(Characteristic.Name, this.name);
+    this.securityService = new Service.SecuritySystem(this.name);
 
     this.securityService
         .getCharacteristic(Characteristic.SecuritySystemCurrentState)
@@ -24,6 +23,8 @@ const smartSecurityAccessory = function (log, config) {
         .on('set', this.setTargetState.bind(this))
         .on('get', this.getTargetState.bind(this))
         .setProps({validValues: [0, 1, 3]});
+
+    this.batteryService = new Service.BatteryService(this.name);
 
     this.batteryService
         .getCharacteristic(Characteristic.BatteryLevel)
