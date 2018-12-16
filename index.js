@@ -36,7 +36,7 @@ const smartSecurityAccessory = function (log, config) {
     this.adt = new adt(config, this.log);
 
     this.adt.on('state', (state) => {
-        this.updateCharacteristics(state);
+        this.updateCharacteristics(state.alarm);
     })
 };
 
@@ -96,24 +96,24 @@ smartSecurityAccessory.prototype = {
         callback(this.adt.setState(status));
     },
 
-    updateCharacteristics(status) {
-        this.log.debug('Updating characteristics to', JSON.stringify(status));
+    updateCharacteristics(alarmStatus) {
+        this.log.debug('Updating alarm characteristics to', JSON.stringify(alarmStatus));
 
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemCurrentState)
-            .updateValue(status.alarm.armingState);
+            .updateValue(alarmStatus.armingState);
         this.securityService
             .getCharacteristic(Characteristic.SecuritySystemTargetState)
-            .updateValue(status.alarm.targetState);
+            .updateValue(alarmStatus.targetState);
         this.securityService
             .getCharacteristic(Characteristic.StatusFault)
-            .updateValue(status.alarm.faultStatus);
+            .updateValue(alarmStatus.faultStatus);
         this.batteryService
             .getCharacteristic(Characteristic.BatteryLevel)
-            .updateValue(status.alarm.batteryLevel);
+            .updateValue(alarmStatus.batteryLevel);
         this.batteryService
             .getCharacteristic(Characteristic.StatusLowBattery)
-            .updateValue(status.alarm.lowBatteryStatus);
+            .updateValue(alarmStatus.lowBatteryStatus);
     }
 };
 
