@@ -15,23 +15,44 @@ const smartSecurityPlatform = function (log, config, api) {
 };
 
 smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
-    this.log.debug("Cached %s accessory", accessory.displayName);
-    this.cachedAccessories.push(accessory.displayName);
+    this.log.debug("Refreshing cached accessory", accessory.displayName);
+    let platformAccessory;
+
+    if (accessory.category === hap.Accessory.Categories.SECURITY_SYSTEM) {
+        platformAccessory = securitySystem.from(accessory, adt, this.log, hap);
+    } else if (accessory.category === hap.Accessory.Categories.SENSOR) {
+        platformAccessory = contactSensor.from(accessory, adt, this.log, hap);
+    } else {
+        throw new Error("Cannot refresh cached accessory with category " + accessory.category);
+    }
+
+    this.cachedAccessories.push(platformAccessory);
 };
 
 smartSecurityPlatform.prototype.initialize = function (state) {
-    this.platformAccessories.push(new securitySystem(this.name, this.adt, this.log, hap, Accessory));
-    state.contactSensors.forEach(sensor => this.platformAccessories.push(new contactSensor(sensor.name, this.adt, this.log, hap, Accessory)));
+    this.platformAccessories = this.cachedAccessories;
+
+    let newAccessories = [];
+
+    if (!this.platformAccessories.some(cached => cached.name === this.name)) {
+        let newSecuritySystem = securitySystem.with(this.name, this.adt, this.log, hap, Accessory);
+        this.platformAccessories.push(newSecuritySystem);
+        newAccessories.push(newSecuritySystem);
+    }
+
+    state.contactSensors
+        .filter(sensor => !this.platformAccessories.some(cached => cached.name === sensor.name))
+        .forEach(sensor => {
+            let newContactSensor = contactSensor.with(sensor.name, this.adt, this.log, hap, Accessory);
+
+            this.platformAccessories.push(newContactSensor);
+            newAccessories.push(newContactSensor);
+        });
 
     this.log("Initializing platform with %s accessories", this.platformAccessories.length);
-
-    let newAccessories = this.platformAccessories
-        .map(accessory => accessory.getAccessory())
-        .filter(accessory => !this.cachedAccessories.includes(accessory.displayName));
-
     this.log("Found %s new platform accessories", newAccessories.length);
 
-    this.api.registerPlatformAccessories("homebridge-adt-smart-security", "ADT", newAccessories);
+    this.api.registerPlatformAccessories("homebridge-adt-smart-security", "ADT", newAccessories.map(accessory => accessory.getAccessory()));
     this.adt.on('state', (state) => this.updateState(state));
 };
 
