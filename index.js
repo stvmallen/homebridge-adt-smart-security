@@ -1,126 +1,48 @@
-let Service, Characteristic;
+let Accessory, hap;
 let adt = require('./lib/adt').Adt;
+let contactSensor = require('./lib/contactSensor').ContactSensor;
+let securitySystem = require('./lib/securitySystem').SecuritySystem;
 
-const smartSecurityAccessory = function (log, config) {
+const smartSecurityPlatform = function (log, config, api) {
     this.log = log;
     this.name = config.name;
-
-    this.accessoryInfo = new Service.AccessoryInformation()
-        .setCharacteristic(Characteristic.Manufacturer, "ADT")
-        .setCharacteristic(Characteristic.SerialNumber, "See ADT Smart Security app")
-        .setCharacteristic(Characteristic.Identify, false)
-        .setCharacteristic(Characteristic.Name, this.name);
-
-    this.securityService = new Service.SecuritySystem(this.name);
-
-    this.securityService
-        .getCharacteristic(Characteristic.SecuritySystemCurrentState)
-        .on('get', this.getCurrentState.bind(this))
-        .setProps({validValues: [0, 1, 3, 4]});
-
-    this.securityService
-        .getCharacteristic(Characteristic.SecuritySystemTargetState)
-        .on('set', this.setTargetState.bind(this))
-        .on('get', this.getTargetState.bind(this))
-        .setProps({validValues: [0, 1, 3]});
-
-    this.batteryService = new Service.BatteryService(this.name);
-
-    this.batteryService
-        .getCharacteristic(Characteristic.BatteryLevel)
-        .on('get', this.getBatteryLevel.bind(this));
-
-    this.batteryService
-        .getCharacteristic(Characteristic.StatusLowBattery)
-        .on('get', this.getLowBatteryStatus.bind(this));
+    this.platformAccessories = [];
+    this.cachedAccessories = [];
+    this.api = api;
 
     this.adt = new adt(config, this.log);
 
-    this.adt.on('state', (state) => {
-        this.updateCharacteristics(state.alarm);
-    })
+    this.adt.on('init', (state) => this.initialize(state));
+    this.adt.on('state', (state) => this.updateState(state));
 };
 
-smartSecurityAccessory.prototype = {
-    getServices() {
-        this.log.debug('Getting services');
-        return [this.accessoryInfo, this.securityService, this.batteryService];
-    },
-
-    identify(callback) {
-        this.log('Identify requested. Not supported yet.');
-        callback();
-    },
-
-    getBatteryLevel(callback) {
-        this.log('Battery level requested');
-        this.adt.getState()
-            .then((state) => callback(null, state ? state.alarm.batteryLevel : state))
-            .catch((error) => {
-                this.log.error(error);
-                callback(error);
-            });
-    },
-
-    getLowBatteryStatus(callback) {
-        this.log('Battery status requested');
-        this.adt.getState()
-            .then((state) => callback(null, state ? state.alarm.lowBatteryStatus : state))
-            .catch((error) => {
-                this.log.error(error);
-                callback(error);
-            });
-    },
-
-    getCurrentState(callback) {
-        this.log('Current state requested');
-        this.adt.getState()
-            .then((state) => callback(null, state ? state.alarm.armingState : state))
-            .catch((error) => {
-                this.log.error(error);
-                callback(error);
-            });
-    },
-
-    getTargetState(callback) {
-        this.log('Target state requested');
-        this.adt.getState()
-            .then((state) => callback(null, state ? state.alarm.targetState : state))
-            .catch((error) => {
-                this.log.error(error);
-                callback(error);
-            });
-    },
-
-    setTargetState(status, callback) {
-        this.log('Received target status', status);
-        callback(this.adt.setState(status));
-    },
-
-    updateCharacteristics(alarmStatus) {
-        this.log.debug('Updating alarm characteristics to', JSON.stringify(alarmStatus));
-
-        this.securityService
-            .getCharacteristic(Characteristic.SecuritySystemCurrentState)
-            .updateValue(alarmStatus.armingState);
-        this.securityService
-            .getCharacteristic(Characteristic.SecuritySystemTargetState)
-            .updateValue(alarmStatus.targetState);
-        this.securityService
-            .getCharacteristic(Characteristic.StatusFault)
-            .updateValue(alarmStatus.faultStatus);
-        this.batteryService
-            .getCharacteristic(Characteristic.BatteryLevel)
-            .updateValue(alarmStatus.batteryLevel);
-        this.batteryService
-            .getCharacteristic(Characteristic.StatusLowBattery)
-            .updateValue(alarmStatus.lowBatteryStatus);
-    }
+smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
+    this.log.debug("Cached %s accessory", accessory.displayName);
+    this.cachedAccessories.push(accessory.displayName);
 };
 
-module.exports = homebridge => {
-    Service = homebridge.hap.Service;
-    Characteristic = homebridge.hap.Characteristic;
+smartSecurityPlatform.prototype.initialize = function (state) {
+    this.platformAccessories.push(new securitySystem(this.name, this.adt, this.log, hap, Accessory));
+    state.contactSensors.forEach(sensor => this.platformAccessories.push(new contactSensor(sensor.name, this.adt, this.log, hap, Accessory)));
 
-    homebridge.registerAccessory('homebridge-adt-smart-security', 'ADT', smartSecurityAccessory);
+    this.log("Initializing platform with %s accessories", this.platformAccessories.length);
+
+    let newAccessories = this.platformAccessories
+        .map(accessory => accessory.getAccessory())
+        .filter(accessory => this.cachedAccessories.includes(accessory.displayName));
+
+    this.api.registerPlatformAccessories("homebridge-adt-smart-security", "ADT", newAccessories);
+};
+
+smartSecurityPlatform.prototype.updateState = function (state) {
+    this.log.debug("Updating platform accessories with", JSON.stringify(state));
+
+    this.platformAccessories.forEach(accessory => accessory.updateCharacteristics(state));
+};
+
+module.exports = function (homebridge) {
+    Accessory = homebridge.platformAccessory;
+    hap = homebridge.hap;
+
+    homebridge.registerPlatform("homebridge-adt-smart-security", "ADT", smartSecurityPlatform, true);
 };
