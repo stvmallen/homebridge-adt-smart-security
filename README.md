@@ -8,6 +8,7 @@ homebridge-plugin for ADT Smart Security (https://smartsecurity.adt.com.ar/)
 
 - Get and set security system status (Home, Away, Off)
 - View battery level (with low battery warning)
+- Support for contact sensors
 
 ## Installation:
 
@@ -18,7 +19,7 @@ homebridge-plugin for ADT Smart Security (https://smartsecurity.adt.com.ar/)
 ### 2. Update homebridge configuration file.
 ```
 {
-    "accessory": "ADT",
+    "platform": "ADT",
     "name": "ADT",
     "username": "user",
     "password": "pass",
