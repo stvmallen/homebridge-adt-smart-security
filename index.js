@@ -13,7 +13,6 @@ const smartSecurityPlatform = function (log, config, api) {
     this.adt = new adt(config, this.log);
 
     this.adt.on('init', (state) => this.initialize(state));
-    this.adt.on('state', (state) => this.updateState(state));
 };
 
 smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
@@ -31,7 +30,10 @@ smartSecurityPlatform.prototype.initialize = function (state) {
         .map(accessory => accessory.getAccessory())
         .filter(accessory => this.cachedAccessories.includes(accessory.displayName));
 
+    this.log("Found %s new platform accessories", newAccessories.length);
+
     this.api.registerPlatformAccessories("homebridge-adt-smart-security", "ADT", newAccessories);
+    this.adt.on('state', (state) => this.updateState(state));
 };
 
 smartSecurityPlatform.prototype.updateState = function (state) {
