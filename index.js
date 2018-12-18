@@ -21,7 +21,7 @@ smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
     if (accessory.category === hap.Accessory.Categories.SECURITY_SYSTEM) {
         platformAccessory = securitySystem.from(accessory, this.adt, this.log, hap);
     } else if (accessory.category === hap.Accessory.Categories.SENSOR) {
-        platformAccessory = contactSensor.from(accessory, this.adt, this.log, hap);
+        platformAccessory = contactSensor.from(accessory, this.log, hap);
     } else {
         throw new Error("Cannot refresh cached accessory with category " + accessory.category);
     }
@@ -43,7 +43,7 @@ smartSecurityPlatform.prototype.initialize = function (state) {
     state.contactSensors
         .filter(sensor => !this.platformAccessories.some(cached => cached.name === sensor.name))
         .forEach(sensor => {
-            let newContactSensor = contactSensor.with(sensor.name, this.adt, this.log, hap, Accessory);
+            let newContactSensor = contactSensor.with(sensor.name, sensor.status, this.log, hap, Accessory);
 
             this.platformAccessories.push(newContactSensor);
             newAccessories.push(newContactSensor);
