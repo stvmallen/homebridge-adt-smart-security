@@ -43,7 +43,7 @@ smartSecurityPlatform.prototype.initialize = function (state) {
     state.contactSensors
         .filter(sensor => !this.platformAccessories.some(cached => cached.name === sensor.name))
         .forEach(sensor => {
-            let newContactSensor = contactSensor.with(sensor.name, sensor.status, this.log, hap, Accessory);
+            let newContactSensor = contactSensor.with(sensor, this.log, hap, Accessory);
 
             this.platformAccessories.push(newContactSensor);
             newAccessories.push(newContactSensor);
