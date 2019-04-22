@@ -77,7 +77,7 @@ smartSecurityPlatform.prototype.setupCameras = async function (cameras) {
 
     Promise.all(this.cameraAccesories)
         .then((cameras) => {
-            this.log('Publishing %s cameras (%s cached)', this.cameraAccesories.length, this.cachedCameraAccessories.length);
+            this.log('Publishing %s cameras', this.cameraAccesories.length);
 
             this.cameraAccesories = cameras;
 
