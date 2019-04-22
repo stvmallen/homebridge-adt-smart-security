@@ -88,7 +88,6 @@ smartSecurityPlatform.prototype.setupCameras = async function (cameras) {
 smartSecurityPlatform.prototype.updateState = function (state) {
     this.log.debug("Updating platform accessories with", JSON.stringify(state));
     this.platformAccessories.forEach(accessory => accessory.updateCharacteristics(state));
-    this.cameraAccesories.forEach(camera => camera.updateFeed(state.cameras));
 };
 
 module.exports = function (homebridge) {
