@@ -13,8 +13,8 @@ const smartSecurityPlatform = function (log, config, api) {
     this.cameraAccesories = [];
     this.api = api;
 
-    this.adt = new adt(config, this.log)
-        .on('init', (state) => this.initialize(state));
+    this.adt = new adt(config, log)
+        .on('init', this.initialize.bind(this));
 };
 
 smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
@@ -61,7 +61,7 @@ smartSecurityPlatform.prototype.initialize = function (state) {
 
     this.setupCameras(state.cameras);
 
-    this.adt.on('state', (state) => this.updateState(state));
+    this.adt.on('state', this.updateState.bind(this));
 };
 
 smartSecurityPlatform.prototype.setupCameras = async function (cameras) {
