@@ -54,12 +54,13 @@ smartSecurityPlatform.prototype.initialize = function (state) {
             newAccessories.push(newContactSensor);
         });
 
-    this.setupCameras(state.cameras);
-
     this.log("Initializing platform with %s accessories", this.platformAccessories.length);
     this.log("Found %s new platform accessories", newAccessories.length);
 
     this.api.registerPlatformAccessories("homebridge-adt-smart-security", "ADT", newAccessories.map(accessory => accessory.getAccessory()));
+
+    this.setupCameras(state.cameras);
+
     this.adt.on('state', (state) => this.updateState(state));
 };
 
