@@ -2,12 +2,15 @@ let Accessory, hap;
 let adt = require('./lib/adt').Adt;
 let contactSensor = require('./lib/contactSensor').ContactSensor;
 let securitySystem = require('./lib/securitySystem').SecuritySystem;
+let camera = require('./lib/camera').Camera;
 
 const smartSecurityPlatform = function (log, config, api) {
     this.log = log;
     this.name = config.name;
     this.platformAccessories = [];
     this.cachedAccessories = [];
+    this.cachedCameraAccessories = [];
+    this.cameraAccesories = [];
     this.api = api;
 
     this.adt = new adt(config, this.log)
@@ -22,6 +25,8 @@ smartSecurityPlatform.prototype.configureAccessory = function (accessory) {
         platformAccessory = securitySystem.from(accessory, this.adt, this.log, hap);
     } else if (accessory.category === hap.Accessory.Categories.SENSOR) {
         platformAccessory = contactSensor.from(accessory, this.log, hap);
+    } else if (accessory.category === hap.Accessory.Categories.CAMERA) {
+        this.cachedCameraAccessories.push(camera.from(accessory, this.adt, this.log, hap));
     } else {
         throw new Error("Cannot refresh cached accessory with category " + accessory.category);
     }
@@ -49,6 +54,8 @@ smartSecurityPlatform.prototype.initialize = function (state) {
             newAccessories.push(newContactSensor);
         });
 
+    this.setupCameras(state.cameras);
+
     this.log("Initializing platform with %s accessories", this.platformAccessories.length);
     this.log("Found %s new platform accessories", newAccessories.length);
 
@@ -56,9 +63,31 @@ smartSecurityPlatform.prototype.initialize = function (state) {
     this.adt.on('state', (state) => this.updateState(state));
 };
 
+smartSecurityPlatform.prototype.setupCameras = async function (cameras) {
+    this.cameraAccesories = this.cachedCameraAccessories;
+
+    cameras
+        .filter(cam => !this.cachedCameraAccessories.some(cached => cached.name === cam.name))
+        .forEach(cam => {
+            let newCamera = camera.with(cam, this.adt, this.log, hap, Accessory);
+
+            this.cameraAccesories.push(newCamera);
+        });
+
+    Promise.all(this.cameraAccesories)
+        .then((cameras) => {
+            this.log('Publishing %s cameras (%s cached)', this.cameraAccesories.length, this.cachedCameraAccessories.length);
+
+            this.cameraAccesories = cameras;
+
+            this.api.publishCameraAccessories("homebridge-adt-smart-security", this.cameraAccesories.map(camera => camera.getAccessory()));
+        });
+};
+
 smartSecurityPlatform.prototype.updateState = function (state) {
     this.log.debug("Updating platform accessories with", JSON.stringify(state));
     this.platformAccessories.forEach(accessory => accessory.updateCharacteristics(state));
+    this.cameraAccesories.forEach(camera => camera.updateFeed(state.cameras));
 };
 
 module.exports = function (homebridge) {
