@@ -28,6 +28,6 @@
   },
   "devDependencies": {
     "homebridge": "^0.4.45",
-    "hap-nodejs": "^0.4.47"
+    "hap-nodejs": "^0.5.4"
   }
 }
