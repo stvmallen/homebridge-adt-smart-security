@@ -27,7 +27,7 @@
     "request-promise": "^4.2.2"
   },
   "devDependencies": {
-    "homebridge": "^0.4.45",
+    "homebridge": "^1.0.1",
     "hap-nodejs": "^0.4.47"
   }
 }
